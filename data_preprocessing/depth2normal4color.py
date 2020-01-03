@@ -187,7 +187,7 @@ def obtain_normal_single_processor(filenames, root_dir, params0906, params0909, 
             # time2 = time.time()
             results = []
             for point_cloud in [xyz_d1, xyz_d2, xyz_d3]:
-                if point_cloud.shape[0] < 1000:
+                if point_cloud.shape[0] < 500:
                     print('[warning] less than 1000 point, %s' % seg1_files[i])
                     continue
 
@@ -577,24 +577,25 @@ def resize_normal(root_dir='/home/data/data_shihao', save_dir='/home/data2', img
 
 
 def move_depth():
+    save_dir = 'to_licheng3'  # remember to revise
     root_dir = '/home/data/data_shihao'
-    filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[120:156]
+    filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[120:156]  # remember to revise
     for filename in filenames:
-        cmd1 = 'cp -r %s/segmentation_plane_fitting/PC1/%s %s/to_shihao/segmentation_plane_fitting/PC1/' %\
-               (root_dir, filename, root_dir)
+        cmd1 = 'cp -r %s/segmentation_plane_fitting/PC1/%s %s/%s/segmentation_plane_fitting/PC1/' %\
+               (root_dir, filename, root_dir, save_dir)
         os.system(cmd1)
-        cmd2 = 'cp -r %s/segmentation_plane_fitting/PC2/%s %s/to_shihao/segmentation_plane_fitting/PC2/' % \
-               (root_dir, filename, root_dir)
+        cmd2 = 'cp -r %s/segmentation_plane_fitting/PC2/%s %s/%s/segmentation_plane_fitting/PC2/' % \
+               (root_dir, filename, root_dir, save_dir)
         os.system(cmd2)
-        cmd3 = 'cp -r %s/segmentation_plane_fitting/PC3/%s %s/to_shihao/segmentation_plane_fitting/PC3/' % \
-               (root_dir, filename, root_dir)
+        cmd3 = 'cp -r %s/segmentation_plane_fitting/PC3/%s %s/%s/segmentation_plane_fitting/PC3/' % \
+               (root_dir, filename, root_dir, save_dir)
         os.system(cmd3)
 
-        cmd4 = 'cp -r %s/depth/PC1/%s %s/to_shihao/depth/PC1/' % (root_dir, filename, root_dir)
+        cmd4 = 'cp -r %s/depth/PC1/%s %s/%s/depth/PC1/' % (root_dir, filename, root_dir, save_dir)
         os.system(cmd4)
-        cmd5 = 'cp -r %s/depth/PC2/%s %s/to_shihao/depth/PC2/' % (root_dir, filename, root_dir)
+        cmd5 = 'cp -r %s/depth/PC2/%s %s/%s/depth/PC2/' % (root_dir, filename, root_dir, save_dir)
         os.system(cmd5)
-        cmd6 = 'cp -r %s/depth/PC3/%s %s/to_shihao/depth/PC3/' % (root_dir, filename, root_dir)
+        cmd6 = 'cp -r %s/depth/PC3/%s %s/%s/depth/PC3/' % (root_dir, filename, root_dir, save_dir)
         os.system(cmd6)
 
         print('%s finish.' % filename)
