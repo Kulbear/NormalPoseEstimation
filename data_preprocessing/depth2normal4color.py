@@ -3,14 +3,12 @@ sys.path.append('../')
 import cv2
 import pickle
 import os
-import utils as utils
+from data_preprocessing import utils as utils
 import glob
 import numpy as np
-import matplotlib.pyplot as plt
-from plyfile import PlyData, PlyElement
-from scipy.io import loadmat
-from sklearn.decomposition import PCA
 import time
+from scipy.io import loadmat
+import matplotlib.pyplot as plt
 import multiprocessing
 
 
@@ -28,30 +26,57 @@ def connectComponent(img, uvd):
     return uvd
 
 
-def obtain_normal_single_processor(filenames, root_dir, params0906, params0909, cpu_i):
-    H, W = 1024, 1224
+def obtain_normal_single_processor(filenames, root_dir, params0906, params0909, cpu_i, color_cam_num=3):
+    H, W = 1080, 1920
     for idx, filename in enumerate(filenames):
-        # if 'zoushihao_demo' not in filename:
+        # if 'guochuan_demo' not in filename:
         #     continue
+        # 'd1p', 'd2p', 'd3p', 'cd1', 'cd2', 'cd3', 'param_p',
+        # 'param_c1', 'param_d1', 'param_c2', 'param_d2', 'param_c3', 'param_d3'
 
         # load correpsonding camera params
         name = filename.split('_')[0]
         if name in ['lyuxingzheng', 'yanhe', 'zoushihao', 'houpengyue', 'zouting', 'guochuan']:
-            param_p = params0906['param_p']
             param_d1 = params0906['param_d1']
             param_d2 = params0906['param_d2']
             param_d3 = params0906['param_d3']
+            param_c1 = params0906['param_c1']
+            param_c2 = params0906['param_c2']
+            param_c3 = params0906['param_c3']
+
             T_d1p = utils.convert_param2tranform(params0906['d1p'])
             T_pd1 = T_d1p.inv()
             T_d2p = utils.convert_param2tranform(params0906['d2p'])
             T_pd2 = T_d2p.inv()
             T_d3p = utils.convert_param2tranform(params0906['d3p'])
             T_pd3 = T_d3p.inv()
+
+            if color_cam_num == 1:
+                param_c = param_c1
+                T_cd1 = utils.convert_param2tranform(params0906['cd1'])
+                T_cd2 = T_cd1 * T_d1p * T_pd2
+                T_cd3 = T_cd1 * T_d1p * T_pd3
+            elif color_cam_num == 2:
+                param_c = param_c2
+                T_cd2 = utils.convert_param2tranform(params0906['cd2'])
+                T_cd1 = T_cd2 * T_d2p * T_pd1
+                T_cd3 = T_cd2 * T_d2p * T_pd3
+            elif color_cam_num == 3:
+                param_c = param_c3
+                T_cd3 = utils.convert_param2tranform(params0906['cd3'])
+                T_cd1 = T_cd3 * T_d3p * T_pd1
+                T_cd2 = T_cd3 * T_d3p * T_pd2
+            else:
+                raise ValueError('color camera num errors %i. It should be 1, 2 or 3.' % color_cam_num)
+
         else:
-            param_p = params0909['param_p']
             param_d1 = params0909['param_d1']
             param_d2 = params0909['param_d2']
             param_d3 = params0909['param_d3']
+            param_c1 = params0909['param_c1']
+            param_c2 = params0909['param_c2']
+            param_c3 = params0909['param_c3']
+
             T_d1p = utils.convert_param2tranform(params0909['d1p'])
             T_pd1 = T_d1p.inv()
             T_d2p = utils.convert_param2tranform(params0909['d2p'])
@@ -59,11 +84,35 @@ def obtain_normal_single_processor(filenames, root_dir, params0906, params0909, 
             T_d3p = utils.convert_param2tranform(params0909['d3p'])
             T_pd3 = T_d3p.inv()
 
+            if color_cam_num == 1:
+                param_c = param_c1
+                T_cd1 = utils.convert_param2tranform(params0909['cd1'])
+                T_cd2 = T_cd1 * T_d1p * T_pd2
+                T_cd3 = T_cd1 * T_d1p * T_pd3
+            elif color_cam_num == 2:
+                param_c = param_c2
+                T_cd2 = utils.convert_param2tranform(params0909['cd2'])
+                T_cd1 = T_cd2 * T_d2p * T_pd1
+                T_cd3 = T_cd2 * T_d2p * T_pd3
+            elif color_cam_num == 3:
+                param_c = param_c3
+                T_cd3 = utils.convert_param2tranform(params0909['cd3'])
+                T_cd1 = T_cd3 * T_d3p * T_pd1
+                T_cd2 = T_cd3 * T_d3p * T_pd2
+            else:
+                raise ValueError('color camera num errors %i. It should be 1, 2 or 3.' % color_cam_num)
+
+        save_dir = '%s/color%i_noisy_normal/%s' % (root_dir, color_cam_num, filename)
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
+
         N = len(glob.glob('%s/annotation_openpose_kinect/fusion/%s/*.pkl' % (root_dir, filename)))
-        print('working on %s (%i), %i examples' % (filename, idx, N))
+        print('working on %s (%i), %i examples, (save directory %s)' % (filename, idx, N, save_dir))
         d1_files = ['%s/depth/PC1/%s/depth_%i.png' % (root_dir, filename, i) for i in range(N)]
         d2_files = ['%s/depth/PC2/%s/depth_%i.png' % (root_dir, filename, i) for i in range(N)]
         d3_files = ['%s/depth/PC3/%s/depth_%i.png' % (root_dir, filename, i) for i in range(N)]
+
+        # c_files = ['%s/color/PC%i/%s/color_%i.jpg' % (root_dir, color_cam_num, filename, i) for i in range(N)]
         # mesh_files = ['%s/fusion_depth_mesh/%s/depth_mesh_%i.ply' % (root_dir, filename, i) for i in range(N)]
         seg1_files = ['%s/segmentation_plane_fitting/PC1/%s/seg_depth_%i.mat' %
                       (root_dir, filename, i) for i in range(N)]
@@ -72,17 +121,14 @@ def obtain_normal_single_processor(filenames, root_dir, params0906, params0909, 
         seg3_files = ['%s/segmentation_plane_fitting/PC3/%s/seg_depth_%i.mat' %
                       (root_dir, filename, i) for i in range(N)]
 
-        save_dir = '%s/real_noisy_normal/%s' % (root_dir, filename)
-        if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
-
         start_time = time.time()
         time_idx = 0
         for i in range(N):
-            # if i != 800:
+            # if i != 1000:
             #     continue
-            # print(d1_files[i])
+            # print(c_files[i])
             # time1 = time.time()
+
             time_idx += 1
             if i % 300 == 1:
                 end_time = time.time()
@@ -120,9 +166,9 @@ def obtain_normal_single_processor(filenames, root_dir, params0906, params0909, 
                 uvd2 = connectComponent(img2, uvd2)
                 uvd3 = connectComponent(img3, uvd3)
 
-                xyz_p1 = T_pd1.transform(utils.uvd2xyz(uvd1, param_d1))
-                xyz_p2 = T_pd2.transform(utils.uvd2xyz(uvd2, param_d2))
-                xyz_p3 = T_pd3.transform(utils.uvd2xyz(uvd3, param_d3))
+                xyz_d1 = T_cd1.transform(utils.uvd2xyz(uvd1, param_d1))
+                xyz_d2 = T_cd2.transform(utils.uvd2xyz(uvd2, param_d2))
+                xyz_d3 = T_cd3.transform(utils.uvd2xyz(uvd3, param_d3))
             except:
                 print('[warning] %s' % seg1_files[i])
                 continue
@@ -140,12 +186,12 @@ def obtain_normal_single_processor(filenames, root_dir, params0906, params0909, 
 
             # time2 = time.time()
             results = []
-            for point_cloud in [xyz_p1, xyz_p2, xyz_p3]:
-                if point_cloud.shape[0] < 2000:
-                    print('[warning] less than 2000 vertex, %s' % seg1_files[i])
+            for point_cloud in [xyz_d1, xyz_d2, xyz_d3]:
+                if point_cloud.shape[0] < 1000:
+                    print('[warning] less than 1000 point, %s' % seg1_files[i])
                     continue
 
-                uv = utils.projection(point_cloud, param_p).astype(np.int32)
+                uv = utils.projection(point_cloud, param_c).astype(np.int32)
                 point_idx = (0 <= uv[:, 0]) & (uv[:, 0] < W) & (0 <= uv[:, 1]) & (uv[:, 1] < H)
                 uv = uv[point_idx, :]
                 d = point_cloud[point_idx, 2]
@@ -160,9 +206,9 @@ def obtain_normal_single_processor(filenames, root_dir, params0906, params0909, 
                 v_min = max(np.min(tmp[0]) - 10, 0)
                 v_max = min(np.max(tmp[0]) + 10, H)
                 img_crop = img[v_min: v_max, u_min: u_max]
-                # print(u_max-u_min, v_max-v_min)
+                # print('image size', u_max-u_min, v_max-v_min)
 
-                fx, fy, cx, cy, k1, k2, k3 = param_p
+                fx, fy, cx, cy, k1, k2, k3 = param_c
                 cx = cx - u_min
                 cy = cy - v_min
                 new_param_p = (fx, fy, cx, cy, k1, k2, k3)
@@ -241,16 +287,26 @@ def obtain_normal_single_processor(filenames, root_dir, params0906, params0909, 
                         if np.linalg.norm(normal) > 0:
                             img_smooth[v, u] = normal / np.linalg.norm(normal)
 
+            # plt.figure()
+            # plt.imshow((img_smooth + 1) / 2)
+            # plt.axis('off')
+            # plt.show()
+            # img_c = (cv2.cvtColor(cv2.imread(c_files[i]), cv2.COLOR_BGR2RGB)[:, ::-1, :]).astype(np.uint8)
+            # plt.figure()
+            # plt.imshow(img_c[v_min:v_max, u_min:u_max, :])
+            # plt.axis('off')
+            # plt.show()
+
             img_angle = np.zeros([v_max - v_min, u_max - u_min, 2])  # theta, phi
             img_angle[:, :, 0] = np.arccos(img_smooth[:, :, 2]) * (img_smooth[:, :, 2] != 0).astype(np.float32)
             img_angle[:, :, 1] = np.arctan2(img_smooth[:, :, 0], img_smooth[:, :, 1])
             img_angle = (img_angle * 1e4).astype(np.int16)
 
-            # img_angle = img_angle.astype(np.float32) / 1e4
-            # img_recover = np.zeros([v_max - v_min, u_max - u_min, 3])
-            # img_recover[:, :, 2] = np.cos(img_angle[:, :, 0]) * (img_angle[:, :, 0] != 0).astype(np.float32)
-            # img_recover[:, :, 0] = np.sin(img_angle[:, :, 0]) * np.sin(img_angle[:, :, 1])
-            # img_recover[:, :, 1] = np.sin(img_angle[:, :, 0]) * np.cos(img_angle[:, :, 1])
+            img_angle = img_angle.astype(np.float32) / 1e4
+            img_recover = np.zeros([v_max - v_min, u_max - u_min, 3])
+            img_recover[:, :, 2] = np.cos(img_angle[:, :, 0]) * (img_angle[:, :, 0] != 0).astype(np.float32)
+            img_recover[:, :, 0] = np.sin(img_angle[:, :, 0]) * np.sin(img_angle[:, :, 1])
+            img_recover[:, :, 1] = np.sin(img_angle[:, :, 0]) * np.cos(img_angle[:, :, 1])
             # print(np.max(np.abs(img_smooth-img_recover)))
 
             # save files
@@ -419,7 +475,7 @@ for idx, filename in enumerate(filenames):
 '''
 
 
-def main(root_dir='/home/data/data_shihao', num_cpus=18, computer=1):
+def main(root_dir='/home/data/data_shihao', color_cam_num=2, num_cpus=18, computer=1):
     # load extrinsic params
     extrinsic_subset = 'sub0906'
     with open('../calib_new/calib_multi_data/%s/extrinsic_params.pkl' % extrinsic_subset, 'rb') as f:
@@ -429,18 +485,19 @@ def main(root_dir='/home/data/data_shihao', num_cpus=18, computer=1):
         params0909 = pickle.load(f)
 
     # filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))
-    if computer == 1:  # shihao3
-        filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[0:18]
+    # obtain_normal_single_processor(filenames, root_dir, params0906, params0909, 0, color_cam_num)
+
+    # filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))
+    if computer == 1:  # shihao
+        filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[0:30]
     elif computer == 2:  # licheng1
-        filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[18:84]
+        filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[30:120]
     elif computer == 3:  # licheng3
-        filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[84:156]
+        filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[120:156]
     else:
         raise ValueError('computer errors...')
     N = len(filenames)
     n_files_cpu = N // num_cpus
-
-    # obtain_normal_single_processor(filenames, root_dir, params0906, params0909)
 
     results = []
     pool = multiprocessing.Pool(num_cpus)
@@ -448,7 +505,7 @@ def main(root_dir='/home/data/data_shihao', num_cpus=18, computer=1):
         idx1 = i * n_files_cpu
         idx2 = min((i + 1) * n_files_cpu, N)
         results.append(pool.apply_async(obtain_normal_single_processor,
-                                        (filenames[idx1: idx2], root_dir, params0906, params0909, i)))
+                                        (filenames[idx1: idx2], root_dir, params0906, params0909, i, color_cam_num)))
     pool.close()
     pool.join()
     pool.terminate()
@@ -458,19 +515,6 @@ def main(root_dir='/home/data/data_shihao', num_cpus=18, computer=1):
         if tmp is not None:
             print(tmp)
     print('Multi-cpu pre-processing ends.')
-
-
-def move_depth():
-    root_dir = '/home/data/data_shihao'
-    filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[0:18]
-    for filename in filenames:
-        cmd1 = 'cp -r %s/segmentation_plane_fitting/PC1/%s %s/to_shihao3/PC1/' % (root_dir, filename, root_dir)
-        os.system(cmd1)
-        cmd2 = 'cp -r %s/segmentation_plane_fitting/PC2/%s %s/to_shihao3/PC2/' % (root_dir, filename, root_dir)
-        os.system(cmd2)
-        cmd3 = 'cp -r %s/segmentation_plane_fitting/PC3/%s %s/to_shihao3/PC3/' % (root_dir, filename, root_dir)
-        os.system(cmd3)
-        print('%s finish.' % filename)
 
 
 def resize_normal(root_dir='/home/data/data_shihao', save_dir='/home/data2', img_size=256,
@@ -532,11 +576,36 @@ def resize_normal(root_dir='/home/data/data_shihao', save_dir='/home/data2', img
         # break
 
 
+def move_depth():
+    root_dir = '/home/data/data_shihao'
+    filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[120:156]
+    for filename in filenames:
+        cmd1 = 'cp -r %s/segmentation_plane_fitting/PC1/%s %s/to_shihao/segmentation_plane_fitting/PC1/' %\
+               (root_dir, filename, root_dir)
+        os.system(cmd1)
+        cmd2 = 'cp -r %s/segmentation_plane_fitting/PC2/%s %s/to_shihao/segmentation_plane_fitting/PC2/' % \
+               (root_dir, filename, root_dir)
+        os.system(cmd2)
+        cmd3 = 'cp -r %s/segmentation_plane_fitting/PC3/%s %s/to_shihao/segmentation_plane_fitting/PC3/' % \
+               (root_dir, filename, root_dir)
+        os.system(cmd3)
+
+        cmd4 = 'cp -r %s/depth/PC1/%s %s/to_shihao/depth/PC1/' % (root_dir, filename, root_dir)
+        os.system(cmd4)
+        cmd5 = 'cp -r %s/depth/PC2/%s %s/to_shihao/depth/PC2/' % (root_dir, filename, root_dir)
+        os.system(cmd5)
+        cmd6 = 'cp -r %s/depth/PC3/%s %s/to_shihao/depth/PC3/' % (root_dir, filename, root_dir)
+        os.system(cmd6)
+
+        print('%s finish.' % filename)
+
+
 if __name__ == '__main__':
     os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
     # move_depth()
-    # main(root_dir='C:/shihao3', num_cpus=6, computer=1)
-    # main(root_dir='/home/data/data_shihao', num_cpus=22, computer=2)
-    # main(root_dir='/home/shihao/data', num_cpus=24, computer=3)
-    resize_normal()
+    # main(root_dir='C:/to_shihao', num_cpus=6, color_cam_num=2, computer=1)
+    main(root_dir='/home/data/data_shihao', num_cpus=10, color_cam_num=2, computer=2)
+    # main(root_dir='/home/shihao/data', num_cpus=6, color_cam_num=2, computer=3)
+    # resize_normal()
 
