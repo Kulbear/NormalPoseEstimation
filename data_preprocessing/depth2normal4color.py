@@ -491,9 +491,11 @@ def main(root_dir='/home/data/data_shihao', color_cam_num=2, num_cpus=18, comput
     if computer == 1:  # shihao
         filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[0:30]
     elif computer == 2:  # licheng1
-        filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[30:120]
+        filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[60:120]
     elif computer == 3:  # licheng3
         filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[120:156]
+    elif computer == 4:  # ji
+        filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[30:60]
     else:
         raise ValueError('computer errors...')
     N = len(filenames)
@@ -577,9 +579,9 @@ def resize_normal(root_dir='/home/data/data_shihao', save_dir='/home/data2', img
 
 
 def move_depth():
-    save_dir = 'to_licheng3'  # remember to revise
+    save_dir = 'to_ji'  # remember to revise
     root_dir = '/home/data/data_shihao'
-    filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[120:156]  # remember to revise
+    filenames = sorted(os.listdir('%s/annotation_openpose_kinect/fusion' % root_dir))[30:60]  # remember to revise
     for filename in filenames:
         cmd1 = 'cp -r %s/segmentation_plane_fitting/PC1/%s %s/%s/segmentation_plane_fitting/PC1/' %\
                (root_dir, filename, root_dir, save_dir)
@@ -602,11 +604,11 @@ def move_depth():
 
 
 if __name__ == '__main__':
-    os.environ["OMP_NUM_THREADS"] = "1"
-    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    # os.environ["OMP_NUM_THREADS"] = "1"
+    # os.environ["OPENBLAS_NUM_THREADS"] = "1"
     # move_depth()
-    # main(root_dir='C:/to_shihao', num_cpus=6, color_cam_num=2, computer=1)
-    main(root_dir='/home/data/data_shihao', num_cpus=10, color_cam_num=2, computer=2)
+    main(root_dir='C:/to_shihao', num_cpus=6, color_cam_num=2, computer=1)
+    # main(root_dir='/home/data/data_shihao', num_cpus=10, color_cam_num=2, computer=2)
     # main(root_dir='/home/shihao/data', num_cpus=6, color_cam_num=2, computer=3)
     # resize_normal()
 
