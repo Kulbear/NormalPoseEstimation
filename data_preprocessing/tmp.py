@@ -13,6 +13,7 @@ for filename in filenames:
             img_angle, v_min, v_max, u_min, u_max = pickle.load(f)
         img_angle = (img_angle * 1e4).astype(np.int16)
 
-        # with open(normal_file, 'wb') as f:
-        #     pickle.dump([img_angle, v_min, v_max, u_min, u_max], f)
-    break
+        with open(normal_file, 'wb') as f:
+            pickle.dump([img_angle, v_min, v_max, u_min, u_max], f)
+    # break
+

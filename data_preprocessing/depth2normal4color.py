@@ -302,7 +302,7 @@ def obtain_normal_single_processor(filenames, root_dir, params0906, params0909, 
             img_angle[:, :, 1] = np.arctan2(img_smooth[:, :, 0], img_smooth[:, :, 1])
             img_angle = (img_angle * 1e4).astype(np.int16)
 
-            img_angle = img_angle.astype(np.float32) / 1e4
+            # img_angle = img_angle.astype(np.float32) / 1e4
             # img_recover = np.zeros([v_max - v_min, u_max - u_min, 3])
             # img_recover[:, :, 2] = np.cos(img_angle[:, :, 0]) * (img_angle[:, :, 0] != 0).astype(np.float32)
             # img_recover[:, :, 0] = np.sin(img_angle[:, :, 0]) * np.sin(img_angle[:, :, 1])
@@ -396,24 +396,24 @@ if __name__ == '__main__':
     os.environ["OPENBLAS_NUM_THREADS"] = "1"
     # move_depth()
     # main(root_dir='C:/to_shihao', num_cpus=6, color_cam_num=1, computer=1)
-    main(root_dir='/home/data/data_shihao', num_cpus=30, color_cam_num=2, computer=2)
+    # main(root_dir='/home/data/data_shihao', num_cpus=30, color_cam_num=2, computer=2)
     # main(root_dir='/home/shihao/data', num_cpus=6, color_cam_num=2, computer=3)
     # resize_normal()
 
-    # i = 1000
-    # save_dir = '/home/data/data_shihao/color2_noisy_normal/zoushihao_demo'
-    # with open('%s/normal_%i.pkl' % (save_dir, i), 'rb') as f:
-    #     img_angle, v_min, v_max, u_min, u_max = pickle.load(f)
-    #
-    # img_angle = img_angle.astype(np.float32)
-    # img_recover = np.zeros([v_max - v_min, u_max - u_min, 3])
-    # img_recover[:, :, 2] = np.cos(img_angle[:, :, 0]) * (img_angle[:, :, 0] != 0).astype(np.float32)
-    # img_recover[:, :, 0] = np.sin(img_angle[:, :, 0]) * np.sin(img_angle[:, :, 1])
-    # img_recover[:, :, 1] = np.sin(img_angle[:, :, 0]) * np.cos(img_angle[:, :, 1])
-    #
-    # plt.figure()
-    # plt.imshow((img_recover + 1) / 2)
-    # plt.axis('off')
-    # plt.show()
+    i = 1000
+    save_dir = '/home/data/data_shihao/color2_noisy_normal/zoushihao_demo'
+    with open('%s/normal_%i.pkl' % (save_dir, i), 'rb') as f:
+        img_angle, v_min, v_max, u_min, u_max = pickle.load(f)
+
+    img_angle = img_angle.astype(np.float32) / 1e4
+    img_recover = np.zeros([v_max - v_min, u_max - u_min, 3])
+    img_recover[:, :, 2] = np.cos(img_angle[:, :, 0]) * (img_angle[:, :, 0] != 0).astype(np.float32)
+    img_recover[:, :, 0] = np.sin(img_angle[:, :, 0]) * np.sin(img_angle[:, :, 1])
+    img_recover[:, :, 1] = np.sin(img_angle[:, :, 0]) * np.cos(img_angle[:, :, 1])
+
+    plt.figure()
+    plt.imshow((img_recover + 1) / 2)
+    plt.axis('off')
+    plt.show()
 
 
