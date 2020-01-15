@@ -5,8 +5,7 @@ import cv2
 from torch.utils.data import Dataset
 import pickle
 import torch
-import torch.nn.functional as F
-import calib_new.utils as utils
+import data_preprocessing.utils as utils
 
 
 class PyREALDatasetColor(Dataset):
@@ -330,6 +329,14 @@ if __name__ == '__main__':
         print(k, v.shape)
 
     dataset_train = PyREALDatasetColor(root_dir=root_dir, computer=computer, mode='val', task='all')
+    i = np.random.randint(0, len(dataset_train), 1)[0]
+    print(i, dataset_train.all_color_files[i])
+    dataset_train.visualization(i)
+    one_sample = dataset_train[i]
+    for k, v in one_sample.items():
+        print(k, v.shape)
+
+    dataset_train = PyREALDatasetColor(root_dir=root_dir, computer=computer, mode='test', task='all')
     i = np.random.randint(0, len(dataset_train), 1)[0]
     print(i, dataset_train.all_color_files[i])
     dataset_train.visualization(i)
