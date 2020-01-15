@@ -109,7 +109,7 @@ class PyREALDatasetColor(Dataset):
 
         # resize color image
         if self.computer == 1:
-            fname_img = fname.replace(self.root_dir, '/home/data2')
+            fname_img = fname.replace(self.root_dir, '/data_shihao')
         else:
             fname_img = fname
         img = (cv2.cvtColor(cv2.imread(fname_img), cv2.COLOR_BGR2RGB)[:, ::-1, :]).astype(np.uint8)
