@@ -391,29 +391,104 @@ def move_depth():
         print('%s finish.' % filename)
 
 
+def resize_normal(root_dir='/home/data/data_shihao', save_dir='/data_shihao', img_size=256,
+                  save_dir_mask='/home/data2'):
+    h, w = 1080, 1920
+    filenames = sorted(os.listdir('%s/color2_noisy_normal/' % root_dir))
+    for filename in filenames:
+        if not os.path.exists('%s/color2_noisy_normal/%s' % (save_dir, filename)):
+            os.mkdir('%s/color2_noisy_normal/%s' % (save_dir, filename))
+        print(filename)
+        fitting_files = sorted(glob.glob('%s/color2_noisy_normal/%s/normal_*.pkl' % (root_dir, filename)))
+        for fname in fitting_files:
+            # fname = '/home/data/data_shihao/color2_noisy_normal/zoushihao_demo/normal_100.pkl'
+            with open(fname, 'rb') as f:
+                img_angle_crop, _v_min, _v_max, _u_min, _u_max = pickle.load(f)
+                img_angle = np.zeros([h, w, 2])
+                # angles are stored as "int16" by multiplying 1e4 to save disk space
+                img_angle[_v_min: _v_max, _u_min: _u_max] = img_angle_crop.astype(np.float32) / 1e4
+
+                _theta, _phi = img_angle[:, :, 0], img_angle[:, :, 1]
+                z = np.cos(_theta) * (_theta != 0).astype(np.float32)
+                x = np.sin(_theta) * np.sin(_phi)
+                y = np.sin(_theta) * np.cos(_phi)
+                xyz_normal = np.stack([x, y, z], axis=2)
+
+            # read the mask file to get bbx
+            fname_mask = fname.replace(root_dir, save_dir_mask).replace('color2_noisy_normal', 'color2_mask')\
+                .replace('normal_', 'mask_')
+            if os.path.exists(fname_mask):
+                # mask file does not exist
+                with open(fname_mask, 'rb') as f:
+                    # bbx: [u_min, u_max, v_min, v_max]
+                    mask_crop, _u_min, _u_max, _v_min, _v_max = pickle.load(f)
+                    mask = np.zeros([h, w])
+                    mask[_v_min: _v_max, _u_min: _u_max] = mask_crop
+
+                    # expand the boundary
+                    _u_min = max(_u_min - 30, 0)
+                    _u_max = min(_u_max + 30, w)
+                    _v_min = max(_v_min - 30, 0)
+                    _v_max = min(_v_max + 30, h)
+
+                    length = max(_u_max - _u_min, _v_max - _v_min)
+                    u_min = int((_u_min + _u_max - length) / 2)
+                    u_max = int((_u_min + _u_max + length) / 2)
+                    v_min = int((_v_min + _v_max - length) / 2)
+                    v_max = int((_v_min + _v_max + length) / 2)
+                    if u_min < 0:
+                        u_min = 0
+                        u_max = length
+                    if u_max > w:
+                        u_min = w - length
+                        u_max = w
+                    if v_min < 0:
+                        v_min = 0
+                        v_max = length
+                    if v_max > h:
+                        v_min = h - length
+                        v_max = h
+
+                xyz_normal = cv2.resize(xyz_normal[v_min:v_max, u_min:u_max, :], (img_size, img_size))
+                norm = np.linalg.norm(xyz_normal, axis=2, keepdims=True)
+                xyz_normal = xyz_normal / (norm + (norm == 0))
+
+                # save disk space
+                img_angle_resize = np.zeros([img_size, img_size, 2])  # theta, phi
+                img_angle_resize[:, :, 0] = np.arccos(xyz_normal[:, :, 2]) * (norm[:, :, 0] > 0)
+                img_angle_resize[:, :, 1] = np.arctan2(xyz_normal[:, :, 0], xyz_normal[:, :, 1])
+                img_angle_resize = (img_angle_resize * 1e4).astype(np.int16)
+
+                save_name = fname.replace(root_dir, save_dir)
+                with open(save_name, 'wb') as f:
+                    pickle.dump([img_angle_resize, (u_min, u_max, v_min, v_max, length)], f)
+
+
 if __name__ == '__main__':
     os.environ["OMP_NUM_THREADS"] = "1"
     os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    resize_normal(root_dir='/home/data/data_shihao', save_dir='/data_shihao', img_size=256,
+                  save_dir_mask='/home/data2')
     # move_depth()
     # main(root_dir='C:/to_shihao', num_cpus=6, color_cam_num=1, computer=1)
     # main(root_dir='/home/data/data_shihao', num_cpus=30, color_cam_num=2, computer=2)
     # main(root_dir='/home/shihao/data', num_cpus=6, color_cam_num=2, computer=3)
     # resize_normal()
 
-    i = 1000
-    save_dir = '/home/data/data_shihao/color2_noisy_normal/zoushihao_demo'
-    with open('%s/normal_%i.pkl' % (save_dir, i), 'rb') as f:
-        img_angle, v_min, v_max, u_min, u_max = pickle.load(f)
-
-    img_angle = img_angle.astype(np.float32) / 1e4
-    img_recover = np.zeros([v_max - v_min, u_max - u_min, 3])
-    img_recover[:, :, 2] = np.cos(img_angle[:, :, 0]) * (img_angle[:, :, 0] != 0).astype(np.float32)
-    img_recover[:, :, 0] = np.sin(img_angle[:, :, 0]) * np.sin(img_angle[:, :, 1])
-    img_recover[:, :, 1] = np.sin(img_angle[:, :, 0]) * np.cos(img_angle[:, :, 1])
-
-    plt.figure()
-    plt.imshow((img_recover + 1) / 2)
-    plt.axis('off')
-    plt.show()
+    # i = 1000
+    # save_dir = '/home/data/data_shihao/color2_noisy_normal/zoushihao_demo'
+    # with open('%s/normal_%i.pkl' % (save_dir, i), 'rb') as f:
+    #     img_angle, v_min, v_max, u_min, u_max = pickle.load(f)
+    #
+    # img_angle = img_angle.astype(np.float32) / 1e4
+    # img_recover = np.zeros([v_max - v_min, u_max - u_min, 3])
+    # img_recover[:, :, 2] = np.cos(img_angle[:, :, 0]) * (img_angle[:, :, 0] != 0).astype(np.float32)
+    # img_recover[:, :, 0] = np.sin(img_angle[:, :, 0]) * np.sin(img_angle[:, :, 1])
+    # img_recover[:, :, 1] = np.sin(img_angle[:, :, 0]) * np.cos(img_angle[:, :, 1])
+    #
+    # plt.figure()
+    # plt.imshow((img_recover + 1) / 2)
+    # plt.axis('off')
+    # plt.show()
 
 
