@@ -74,6 +74,27 @@ def train_normal(args):
     for epoch in range(args.epochs + 1):
         print('====================================== Epoch %i ========================================' % (epoch + 1))
 
+        if epoch == 0:
+            print('[status] update calssification')
+            for name, param in model.named_parameters():
+                if 'polar2normal.encoder1' in name or 'polar2normal.decoder1' in name:  # TODO: change parameter name
+                    param.requires_grad = True
+                else:
+                    param.requires_grad = False
+
+        if epoch == int(args.epochs / 3):
+            print('[status] update normal')
+            for name, param in model.named_parameters():
+                if 'polar2normal.encoder2' in name or 'polar2normal.decoder2' in name:  # TODO: change parameter name
+                    param.requires_grad = True
+                else:
+                    param.requires_grad = False
+
+        if epoch == int(2 * args.epochs / 3):
+            print('[status] fine-tune classification and normal')
+            for name, param in model.named_parameters():  # TODO: change parameter name
+                param.requires_grad = True
+
         # validation
         print('------------------------------------- Validation ------------------------------------')
         start_time = time.time()
